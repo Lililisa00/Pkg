@@ -154,4 +154,5 @@ class ImageAnalyzerApp:
 if __name__ == "__main__":
     root = tk.Tk()
     app = ImageAnalyzerApp(root)
+
     root.mainloop()
