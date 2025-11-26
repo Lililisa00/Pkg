@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Converter: RGB - XYZ - HSV</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h2 { color: #333; margin-bottom: 20px; }
+        
+        /* Layout */
+        .container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 1200px; }
+        .model-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 300px; display: flex; flex-direction: column; }
+        .model-header { font-weight: bold; font-size: 1.2em; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; text-align: center; color: #444; }
+        
+        /* Controls */
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; font-size: 0.9em; color: #666; margin-bottom: 5px; font-weight: 600;}
+        .row { display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { flex-grow: 1; cursor: pointer; accent-color: #4a90e2; }
+        input[type="number"] { width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; }
+        
+        /* Preview Section */
+        .top-section { width: 100%; max-width: 930px; margin-bottom: 25px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center;}
+        
+        #colorPreview { width: 100%; height: 100px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; background-color: rgb(0,0,0); transition: background-color 0.1s;}
+        
+        .hex-controls { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        
+        /* Hex Input Styling */
+        .hex-wrapper { position: relative; display: flex; align-items: center; }
+        .hex-wrapper span { position: absolute; left: 10px; color: #777; font-family: monospace; font-size: 1.1em;}
+        #hexInput { 
+            padding: 8px 10px 8px 25px; font-size: 1.1em; border: 1px solid #ccc; 
+            border-radius: 5px; width: 100px; font-family: monospace; text-transform: uppercase;
+        }
+
+        /* Palette Button Styling */
+        #nativePickerWrapper {
+            position: relative;
+            width: 40px; height: 40px; overflow: hidden;
+            border-radius: 50%; border: 2px solid #ddd; cursor: pointer;
+        }
+        #nativePicker { 
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; 
+            cursor: pointer; border: none; padding: 0;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            width: 100%; box-sizing: border-box;
+            background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+            padding: 10px; border-radius: 5px; display: none; font-size: 0.9rem; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Конвертер: RGB — XYZ — HSV</h2>
+
+    <div class="top-section">
+        <div style="width: 100%;">
+            <div id="colorPreview"></div>
+        </div>
+
+        <div class="hex-controls">
+            <div class="hex-wrapper">
+                <span>#</span>
+                <input type="text" id="hexInput" value="000000" maxlength="6">
+            </div>
+            
+            <div id="nativePickerWrapper" title="Открыть палитру">
+                <input type="color" id="nativePicker" value="#000000">
+            </div>
+        </div>
+
+        <div id="warningMsg" class="warning-box">
+            ⚠️ <strong>Внимание:</strong> Цвет вышел за границы охвата RGB. Значения были округлены.
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="model-box">
+            <div class="model-header">RGB (0-255)</div>
+            <div id="rgbControls"></div>
+        </div>
+
+        <div class="model-box">
+            <div class="model-header">XYZ (D65)</div>
+            <div id="xyzControls"></div>
+        </div>
+
+        <div class="model-box">
+            <div class="model-header">HSV (Hue/Sat/Val)</div>
+            <div id="hsvControls"></div>
+        </div>
+    </div>
+
+<script>
+    // --- 1. Инициализация UI ---
+    const config = {
+        rgb: { params: ['R', 'G', 'B'], min: [0,0,0], max: [255,255,255], step: 1 },
+        xyz: { params: ['X', 'Y', 'Z'], min: [0,0,0], max: [95.0, 100.0, 108.9], step: 0.1 },
+        hsv: { params: ['H', 'S', 'V'], min: [0,0,0], max: [360, 100, 100], step: 1 }
+    };
+
+    function createControls(model, containerId, callback) {
+        const parent = document.getElementById(containerId);
+        config[model].params.forEach((param, index) => {
+            const div = document.createElement('div');
+            div.className = 'control-group';
+            div.innerHTML = `
+                <label>${param}</label>
+                <div class="row">
+                    <input type="range" id="${model}-${param}-slide" 
+                           min="${config[model].min[index]}" max="${config[model].max[index]}" 
+                           step="${config[model].step}" value="0">
+                    <input type="number" id="${model}-${param}-val" 
+                           min="${config[model].min[index]}" max="${config[model].max[index]}" 
+                           step="${config[model].step}" value="0">
+                </div>
+            `;
+            parent.appendChild(div);
+            const slide = div.querySelector(`#${model}-${param}-slide`);
+            const val = div.querySelector(`#${model}-${param}-val`);
+            slide.addEventListener('input', () => { val.value = slide.value; callback(); });
+            val.addEventListener('input', () => { slide.value = val.value; callback(); });
+        });
+    }
+
+    const warningMsg = document.getElementById('warningMsg');
+    const preview = document.getElementById('colorPreview');
+    const nativePicker = document.getElementById('nativePicker');
+    const hexInput = document.getElementById('hexInput');
+
+    // --- 2. Логика ---
+
+    function updateFromRGB() {
+        warningMsg.style.display = 'none';
+        const r = parseInt(document.getElementById('rgb-R-val').value) || 0;
+        const g = parseInt(document.getElementById('rgb-G-val').value) || 0;
+        const b = parseInt(document.getElementById('rgb-B-val').value) || 0;
+
+        updatePreview(r, g, b);
+        rgbToXyz(r, g, b);
+        rgbToHsv(r, g, b);
+    }
+
+    function updateFromXYZ() {
+        const x = parseFloat(document.getElementById('xyz-X-val').value) || 0;
+        const y = parseFloat(document.getElementById('xyz-Y-val').value) || 0;
+        const z = parseFloat(document.getElementById('xyz-Z-val').value) || 0;
+
+        let rgb = xyzToRgbCalc(x, y, z);
+        let isClamped = false;
+        
+        ['r', 'g', 'b'].forEach(k => {
+            if (rgb[k] < 0 || rgb[k] > 255) {
+                isClamped = true;
+                rgb[k] = Math.max(0, Math.min(255, rgb[k]));
+            }
+        });
+
+        warningMsg.style.display = isClamped ? 'block' : 'none';
+        setRGBInputs(rgb.r, rgb.g, rgb.b);
+        updatePreview(rgb.r, rgb.g, rgb.b);
+        rgbToHsv(rgb.r, rgb.g, rgb.b);
+    }
+
+    function updateFromHSV() {
+        warningMsg.style.display = 'none';
+        const h = parseFloat(document.getElementById('hsv-H-val').value) || 0;
+        const s = parseFloat(document.getElementById('hsv-S-val').value) || 0;
+        const v = parseFloat(document.getElementById('hsv-V-val').value) || 0;
+
+        const rgb = hsvToRgbCalc(h, s, v);
+        setRGBInputs(rgb.r, rgb.g, rgb.b);
+        updatePreview(rgb.r, rgb.g, rgb.b);
+        rgbToXyz(rgb.r, rgb.g, rgb.b);
+    }
+
+    // --- 3. Хелперы ---
+
+    function setRGBInputs(r, g, b) {
+        r = Math.round(r); g = Math.round(g); b = Math.round(b);
+        document.getElementById('rgb-R-slide').value = document.getElementById('rgb-R-val').value = r;
+        document.getElementById('rgb-G-slide').value = document.getElementById('rgb-G-val').value = g;
+        document.getElementById('rgb-B-slide').value = document.getElementById('rgb-B-val').value = b;
+    }
+
+    function updatePreview(r, g, b) {
+        r = Math.round(r); g = Math.round(g); b = Math.round(b);
+        const color = `rgb(${r}, ${g}, ${b})`;
+        preview.style.backgroundColor = color;
+        
+        // HEX Logic
+        const toHex = c => ("0" + Math.max(0, Math.min(255, c)).toString(16)).slice(-2);
+        const hexCode = `${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+        
+        hexInput.value = hexCode;
+        nativePicker.value = "#" + hexCode;
+        document.getElementById('nativePickerWrapper').style.backgroundColor = "#" + hexCode;
+    }
+
+    // --- 4. Математика ---
+    
+    // RGB -> XYZ
+    function rgbToXyz(r, g, b) {
+        const pivot = (n) => {
+            n /= 255;
+            return n > 0.04045 ? Math.pow((n + 0.055) / 1.055, 2.4) : n / 12.92;
+        };
+        const R = pivot(r), G = pivot(g), B = pivot(b);
+        const X = (R * 0.4124 + G * 0.3576 + B * 0.1805) * 100;
+        const Y = (R * 0.2126 + G * 0.7152 + B * 0.0722) * 100;
+        const Z = (R * 0.0193 + G * 0.1192 + B * 0.9505) * 100;
+
+        document.getElementById('xyz-X-slide').value = document.getElementById('xyz-X-val').value = X.toFixed(1);
+        document.getElementById('xyz-Y-slide').value = document.getElementById('xyz-Y-val').value = Y.toFixed(1);
+        document.getElementById('xyz-Z-slide').value = document.getElementById('xyz-Z-val').value = Z.toFixed(1);
+    }
+
+    // XYZ -> RGB
+    function xyzToRgbCalc(x, y, z) {
+        const X = x / 100, Y = y / 100, Z = z / 100;
+        let r = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
+        let g = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
+        let b = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
+        const pivot = (n) => n > 0.0031308 ? 1.055 * Math.pow(n, 1 / 2.4) - 0.055 : 12.92 * n;
+        return { r: pivot(r) * 255, g: pivot(g) * 255, b: pivot(b) * 255 };
+    }
+
+    // RGB -> HSV
+    function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, v = max;
+        const d = max - min;
+        s = max === 0 ? 0 : d / max;
+        if (max === min) h = 0; 
+        else {
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        document.getElementById('hsv-H-slide').value = document.getElementById('hsv-H-val').value = Math.round(h * 360);
+        document.getElementById('hsv-S-slide').value = document.getElementById('hsv-S-val').value = Math.round(s * 100);
+        document.getElementById('hsv-V-slide').value = document.getElementById('hsv-V-val').value = Math.round(v * 100);
+    }
+
+    // HSV -> RGB
+    function hsvToRgbCalc(h, s, v) {
+        h /= 360; s /= 100; v /= 100;
+        let r, g, b;
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v; g = t; b = p; break;
+            case 1: r = q; g = v; b = p; break;
+            case 2: r = p; g = v; b = t; break;
+            case 3: r = p; g = q; b = v; break;
+            case 4: r = t; g = p; b = v; break;
+            case 5: r = v; g = p; b = q; break;
+        }
+        return { r: r * 255, g: g * 255, b: b * 255 };
+    }
+
+    // --- 5. Обработчики событий палитры и HEX ---
+
+    // Обработка ввода в HEX поле
+    hexInput.addEventListener('input', (e) => {
+        let hex = e.target.value.replace(/[^0-9A-Fa-f]/g, '');
+        if (hex.length === 6) {
+            const r = parseInt(hex.substr(0,2), 16);
+            const g = parseInt(hex.substr(2,2), 16);
+            const b = parseInt(hex.substr(4,2), 16);
+            
+            document.getElementById('rgb-R-val').value = r;
+            document.getElementById('rgb-G-val').value = g;
+            document.getElementById('rgb-B-val').value = b;
+            updateFromRGB();
+        }
+    });
+
+    // Обработка выбора из палитры
+    nativePicker.addEventListener('input', (e) => {
+        const hex = e.target.value;
+        hexInput.value = hex.substr(1).toUpperCase(); // Убираем # и пишем в поле
+        
+        const r = parseInt(hex.substr(1,2), 16);
+        const g = parseInt(hex.substr(3,2), 16);
+        const b = parseInt(hex.substr(5,2), 16);
+        
+        document.getElementById('rgb-R-val').value = r;
+        document.getElementById('rgb-G-val').value = g;
+        document.getElementById('rgb-B-val').value = b;
+        updateFromRGB();
+    });
+
+    createControls('rgb', 'rgbControls', updateFromRGB);
+    createControls('xyz', 'xyzControls', updateFromXYZ);
+    createControls('hsv', 'hsvControls', updateFromHSV);
+
+    updateFromRGB();
+
+</script>
+</body>
+</html>
