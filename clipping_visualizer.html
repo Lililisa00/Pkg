@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Clipping Visualizer — Liang-Barsky & Cyrus-Beck</title>
+    <style>
+      :root {
+        --bg: #f7f9fb;
+        --panel: #ffffff;
+        --muted: #6b7280;
+        --accent: #2563eb;
+        --good: #16a34a;
+        --bad: #dc2626;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+      }
+      body {
+        background: linear-gradient(180deg, #fbfdff 0%, var(--bg) 100%);
+        padding: 18px;
+      }
+      .app {
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+      }
+      .panel {
+        width: 380px;
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      label {
+        font-size: 13px;
+        color: #111827;
+      }
+      textarea {
+        width: 100%;
+        height: 160px;
+        font-family: monospace;
+        border: 1px solid #e6e9ef;
+        border-radius: 8px;
+        padding: 8px;
+        resize: vertical;
+      }
+      input[type="number"] {
+        width: 80px;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #e6e9ef;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button.ghost {
+        background: #fff;
+        border: 1px solid #e6e9ef;
+        color: #111;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .legend {
+        margin-top: 10px;
+        font-size: 13px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .colorbox {
+        width: 18px;
+        height: 12px;
+        border-radius: 3px;
+      }
+      canvas {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e6e9ef;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .footer {
+        margin-top: 8px;
+      }
+      .input-inline {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .mode {
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="panel">
+        <h2>Clipping Visualizer</h2>
+        <label>Вставьте входной файл или используйте пример:</label>
+        <textarea
+          id="inputSegments"
+          placeholder="Формат:\n n\n x1 y1 x2 y2  (n строк)\n xmin ymin xmax ymax (одна строка)"
+        ></textarea>
+
+        <div class="row controls">
+          <button id="loadSample">Загрузить пример</button>
+          <button id="parse">Разобрать вход</button>
+          <button id="clip">Отсечь</button>
+          <button id="reset" class="ghost">Сбросить</button>
+          <button id="download" class="ghost">Скачать HTML</button>
+        </div>
+
+        <div class="mode">
+          <label
+            ><input type="radio" name="mode" value="rect" checked />
+            Использовать прямоугольное окно</label
+          ><br />
+          <label
+            ><input type="radio" name="mode" value="poly" /> Использовать
+            выпуклый многоугольник</label
+          >
+        </div>
+
+        <div style="margin-top: 8px">
+          <label class="small"
+            >Прямоугольное окно (если не задано в файле):</label
+          >
+          <div class="input-inline" style="margin-top: 6px">
+            <input
+              id="rectXmin"
+              type="number"
+              placeholder="xmin"
+              value="-120"
+            />
+            <input id="rectYmin" type="number" placeholder="ymin" value="-60" />
+            <input id="rectXmax" type="number" placeholder="xmax" value="120" />
+            <input id="rectYmax" type="number" placeholder="ymax" value="60" />
+          </div>
+          <div class="small muted">
+            Если в файле есть строка окна, она будет использована. Можно также
+            прямо вводить вершины многоугольника ниже.
+          </div>
+        </div>
+
+        <label style="display: block; margin-top: 8px"
+          >Вершины выпуклого многоугольника (x y, одна пара на строку,
+          CCW):</label
+        >
+        <textarea id="polyPts">
+200 120
+320 40
+420 120
+380 240
+240 240</textarea
+        >
+
+        <div class="row" style="margin-top: 8px; align-items: center">
+          <label>Масштаб: </label>
+          <input id="scale" type="number" value="1" step="0.1" />
+          <label class="small" style="margin-left: 8px">Смещение X,Y:</label>
+          <input id="offX" type="number" value="0" />
+          <input id="offY" type="number" value="0" />
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <span
+              class="colorbox"
+              style="background: #efefef; border: 1px solid #ccc"
+            ></span
+            >Отсекающее окно
+          </div>
+          <div class="legend-item">
+            <span class="colorbox" style="background: #1f77b4"></span>Исходные
+            отрезки
+          </div>
+          <div class="legend-item">
+            <span class="colorbox" style="background: #16a34a"></span>Видимые
+            части после отсечения
+          </div>
+          <div class="legend-item">
+            <span class="colorbox" style="background: #dc2626"></span>Отсечённые
+            части (пунктир)
+          </div>
+        </div>
+
+        <div class="footer muted small">
+          Подсказка: формат входа допускает либо явное число n в первой строке,
+          либо его отсутствие. Парсер автоматически определит, где окно и где
+          отрезки.
+        </div>
+      </div>
+
+      <div>
+        <canvas id="c" width="1000" height="700"></canvas>
+      </div>
+    </div>
+
+    <script>
+      // ------------- Robust parser and clipped visualizer -------------
+      function parseSegmentsText(txt) {
+        const lines = txt
+          .trim()
+          .split(/\n+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (lines.length === 0) return { segments: [], rect: null };
+        // Helper to parse 4 numbers
+        const parse4 = (line) => {
+          const p = line.split(/\s+/).map(Number);
+          return p.length >= 4 && p.slice(0, 4).every((x) => !isNaN(x))
+            ? p.slice(0, 4)
+            : null;
+        };
+        // Case 1: first token is an integer count and file has at least n+1 lines
+        const firstTokens = lines[0].split(/\s+/);
+        let nCandidate = parseInt(firstTokens[0]);
+        if (!isNaN(nCandidate) && lines.length >= nCandidate + 1) {
+          // read next nCandidate lines as segments
+          const segments = [];
+          for (let i = 0; i < nCandidate; i++) {
+            const parts = parse4(lines[1 + i]);
+            if (!parts)
+              throw new Error(
+                "Ошибка формата: ожидаются 4 числа в строке отрезка #" + (i + 1)
+              );
+            segments.push({
+              x0: parts[0],
+              y0: parts[1],
+              x1: parts[2],
+              y1: parts[3],
+            });
+          }
+          // remaining line(s): try last non-empty line as rect
+          const possibleRectLine = lines[1 + nCandidate];
+          const rectParts = possibleRectLine ? parse4(possibleRectLine) : null;
+          const rect = rectParts
+            ? {
+                xmin: rectParts[0],
+                ymin: rectParts[1],
+                xmax: rectParts[2],
+                ymax: rectParts[3],
+              }
+            : null;
+          return { segments, rect };
+        }
+        // Case 2: file without n. Assume last line is rect and previous lines are segments
+        if (lines.length >= 2) {
+          const last = lines[lines.length - 1];
+          const rectParts = parse4(last);
+          const segments = [];
+          if (rectParts) {
+            for (let i = 0; i < lines.length - 1; i++) {
+              const p = parse4(lines[i]);
+              if (!p)
+                throw new Error(
+                  "Ошибка формата: каждая строка с отрезком должна содержать 4 числа (строка " +
+                    (i + 1) +
+                    ")"
+                );
+              segments.push({ x0: p[0], y0: p[1], x1: p[2], y1: p[3] });
+            }
+            return {
+              segments,
+              rect: {
+                xmin: rectParts[0],
+                ymin: rectParts[1],
+                xmax: rectParts[2],
+                ymax: rectParts[3],
+              },
+            };
+          }
+        }
+        throw new Error(
+          "Не удалось разобрать вход. Убедитесь, что формат соответствует описанному."
+        );
+      }
+
+      // Liang-Barsky
+      function liangBarsky(x0, y0, x1, y1, xmin, ymin, xmax, ymax) {
+        const dx = x1 - x0,
+          dy = y1 - y0;
+        const p = [-dx, dx, -dy, dy];
+        const q = [x0 - xmin, xmax - x0, y0 - ymin, ymax - y0];
+        let u1 = 0,
+          u2 = 1;
+        for (let i = 0; i < 4; i++) {
+          if (Math.abs(p[i]) < 1e-12) {
+            if (q[i] < 0) return null;
+          } else {
+            const t = q[i] / p[i];
+            if (p[i] < 0) {
+              if (t > u2) return null;
+              if (t > u1) u1 = t;
+            } else {
+              if (t < u1) return null;
+              if (t < u2) u2 = t;
+            }
+          }
+        }
+        return {
+          x0: x0 + u1 * dx,
+          y0: y0 + u1 * dy,
+          x1: x0 + u2 * dx,
+          y1: y0 + u2 * dy,
+          t0: u1,
+          t1: u2,
+        };
+      }
+
+      // Cyrus-Beck for convex polygon (CCW)
+      function cyrusBeckClip(x0, y0, x1, y1, polygon) {
+        const dx = x1 - x0,
+          dy = y1 - y0;
+        let tE = 0,
+          tL = 1;
+        for (let i = 0; i < polygon.length; i++) {
+          const A = polygon[i],
+            B = polygon[(i + 1) % polygon.length];
+          const edgeX = B.x - A.x,
+            edgeY = B.y - A.y;
+          const nx = edgeY,
+            ny = -edgeX; // inward normal for CCW
+          const wx = x0 - A.x,
+            wy = y0 - A.y;
+          const denom = nx * dx + ny * dy;
+          const numer = -(nx * wx + ny * wy);
+          if (Math.abs(denom) < 1e-12) {
+            if (numer < 0) return null;
+            else continue;
+          }
+          const t = numer / denom;
+          if (denom > 0) {
+            if (t < tL) tL = t;
+          } else {
+            if (t > tE) tE = t;
+          }
+          if (tE > tL) return null;
+        }
+        return {
+          x0: x0 + tE * dx,
+          y0: y0 + tE * dy,
+          x1: x0 + tL * dx,
+          y1: x0 + tL * dy,
+          t0: tE,
+          t1: tL,
+        };
+      }
+
+      // Drawing utilities
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d");
+      let state = {
+        segments: [],
+        rect: null,
+        poly: [],
+        clippedSegments: [],
+        removedSegments: [],
+        mode: "rect",
+      };
+      function toCanvasX(x) {
+        const s = Number(document.getElementById("scale").value) || 1;
+        const ox = Number(document.getElementById("offX").value) || 0;
+        return x * s + canvas.width / 2 + ox;
+      }
+      function toCanvasY(y) {
+        const s = Number(document.getElementById("scale").value) || 1;
+        const oy = Number(document.getElementById("offY").value) || 0;
+        return -y * s + canvas.height / 2 + oy;
+      }
+      function clear() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      function drawAxes() {
+        ctx.save();
+        ctx.strokeStyle = "#f1f5f9";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function draw() {
+        clear();
+        drawAxes();
+        // window
+        if (state.mode === "rect" && state.rect) {
+          ctx.save();
+          ctx.fillStyle = "#efefef";
+          ctx.strokeStyle = "#c7cdd6";
+          ctx.lineWidth = 1;
+          const x = toCanvasX(state.rect.xmin),
+            y = toCanvasY(state.rect.ymax);
+          const s = Number(document.getElementById("scale").value) || 1;
+          const w = (state.rect.xmax - state.rect.xmin) * s,
+            h = (state.rect.ymax - state.rect.ymin) * s;
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeRect(x, y, w, h);
+          ctx.restore();
+        } else if (state.mode === "poly" && state.poly.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(state.poly[0].x), toCanvasY(state.poly[0].y));
+          for (let i = 1; i < state.poly.length; i++)
+            ctx.lineTo(toCanvasX(state.poly[i].x), toCanvasY(state.poly[i].y));
+          ctx.closePath();
+          ctx.fillStyle = "#efefef";
+          ctx.fill();
+          ctx.strokeStyle = "#c7cdd6";
+          ctx.stroke();
+        }
+
+        // original segments
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#1f77b4";
+        state.segments.forEach((s) => {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(s.x0), toCanvasY(s.y0));
+          ctx.lineTo(toCanvasX(s.x1), toCanvasY(s.y1));
+          ctx.stroke();
+        });
+
+        // visible parts
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#16a34a";
+        state.clippedSegments.forEach((s) => {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(s.x0), toCanvasY(s.y0));
+          ctx.lineTo(toCanvasX(s.x1), toCanvasY(s.y1));
+          ctx.stroke();
+        });
+
+        // removed parts
+        ctx.setLineDash([8, 6]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#dc2626";
+        state.removedSegments.forEach((s) => {
+          ctx.beginPath();
+          ctx.moveTo(toCanvasX(s.x0), toCanvasY(s.y0));
+          ctx.lineTo(toCanvasX(s.x1), toCanvasY(s.y1));
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+      }
+
+      // Actions
+      document.getElementById("loadSample").addEventListener("click", () => {
+        const sample = `7
+-150 -50 150 50
+-200 80 200 80
+-200 -120 -200 120
+-50 -150 250 150
+-100 100 50 -200
+0 0 300 0
+-120 -60 120 60`;
+        document.getElementById("inputSegments").value = sample;
+      });
+
+      function showError(msg) {
+        alert(msg);
+      }
+
+      document.getElementById("parse").addEventListener("click", () => {
+        try {
+          const txt = document.getElementById("inputSegments").value;
+          const parsed = parseSegmentsText(txt);
+          state.segments = parsed.segments || [];
+          state.rect = parsed.rect || null;
+          // poly from textarea
+          const pts = document
+            .getElementById("polyPts")
+            .value.trim()
+            .split(/\n+/)
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .map((l) => {
+              const p = l.split(/\s+/).map(Number);
+              return { x: p[0], y: p[1] };
+            });
+          state.poly = pts;
+          draw();
+        } catch (e) {
+          showError(e.message);
+        }
+      });
+
+      document.getElementById("clip").addEventListener("click", () => {
+        state.clippedSegments = [];
+        state.removedSegments = [];
+        state.mode = document.querySelector("input[name=mode]:checked").value;
+        // ensure rect exists
+        if (state.mode === "rect") {
+          if (!state.rect) {
+            // read from inputs
+            const xmin = Number(document.getElementById("rectXmin").value);
+            const ymin = Number(document.getElementById("rectYmin").value);
+            const xmax = Number(document.getElementById("rectXmax").value);
+            const ymax = Number(document.getElementById("rectYmax").value);
+            state.rect = { xmin, ymin, xmax, ymax };
+          }
+          state.segments.forEach((s) => {
+            const res = liangBarsky(
+              s.x0,
+              s.y0,
+              s.x1,
+              s.y1,
+              state.rect.xmin,
+              state.rect.ymin,
+              state.rect.xmax,
+              state.rect.ymax
+            );
+            if (res) {
+              state.clippedSegments.push(res);
+              if (res.t0 > 0)
+                state.removedSegments.push({
+                  x0: s.x0,
+                  y0: s.y0,
+                  x1: s.x0 + res.t0 * (s.x1 - s.x0),
+                  y1: s.y0 + res.t0 * (s.y1 - s.y0),
+                });
+              if (res.t1 < 1)
+                state.removedSegments.push({
+                  x0: s.x0 + res.t1 * (s.x1 - s.x0),
+                  y0: s.y0 + res.t1 * (s.y1 - s.y0),
+                  x1: s.x1,
+                  y1: s.y1,
+                });
+            } else {
+              state.removedSegments.push(s);
+            }
+          });
+        } else {
+          if (state.poly.length < 3) {
+            showError("Вершины многоугольника не заданы (минимум 3).");
+            return;
+          }
+          state.segments.forEach((s) => {
+            const res = cyrusBeckClip(s.x0, s.y0, s.x1, s.y1, state.poly);
+            if (res) {
+              state.clippedSegments.push(res);
+              if (res.t0 > 0)
+                state.removedSegments.push({
+                  x0: s.x0,
+                  y0: s.y0,
+                  x1: s.x0 + res.t0 * (s.x1 - s.x0),
+                  y1: s.y0 + res.t0 * (s.y1 - s.y0),
+                });
+              if (res.t1 < 1)
+                state.removedSegments.push({
+                  x0: s.x0 + res.t1 * (s.x1 - s.x0),
+                  y0: s.y0 + res.t1 * (s.y1 - s.y0),
+                  x1: s.x1,
+                  y1: s.y1,
+                });
+            } else {
+              state.removedSegments.push(s);
+            }
+          });
+        }
+        draw();
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        state = { segments: [], rect: null, poly: [] };
+        document.getElementById("inputSegments").value = "";
+        draw();
+      });
+
+      document.getElementById("download").addEventListener("click", () => {
+        const blob = new Blob([document.documentElement.outerHTML], {
+          type: "text/html",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "clipping-visualizer.html";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      ["scale", "offX", "offY"].forEach((id) =>
+        document.getElementById(id).addEventListener("input", draw)
+      );
+
+      // initial draw
+      draw();
+    </script>
+  </body>
+</html>
