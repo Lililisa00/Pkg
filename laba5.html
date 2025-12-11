@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Алгоритмы отсечения - Вариант 8</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .variant-info {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .canvas-container {
+            flex: 2;
+            min-width: 600px;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 1.5rem;
+        }
+        
+        h3 {
+            color: #3498db;
+            margin: 20px 0 15px;
+            font-size: 1.2rem;
+        }
+        
+        .algorithm-info {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        textarea:focus, input[type="file"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        textarea {
+            height: 150px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s;
+            flex-grow: 1;
+            min-width: 140px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .secondary-btn {
+            background-color: #7f8c8d;
+        }
+        
+        .secondary-btn:hover {
+            background-color: #6c7b7d;
+        }
+        
+        .primary-btn {
+            background-color: #2ecc71;
+        }
+        
+        .primary-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        canvas {
+            display: block;
+            background-color: #fefefe;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .clipping-window {
+            background-color: rgba(52, 152, 219, 0.1);
+            border: 2px solid #3498db;
+        }
+        
+        .original-lines {
+            background-color: rgba(231, 76, 60, 0.2);
+            border: 2px solid #e74c3c;
+        }
+        
+        .clipped-lines {
+            background-color: rgba(46, 204, 113, 0.3);
+            border: 2px solid #2ecc71;
+        }
+        
+        .instructions {
+            background-color: #fff8e1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 25px;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .instructions h3 {
+            color: #f39c12;
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .file-example {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 1100px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .controls-panel, .canvas-container {
+                min-width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            canvas {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Алгоритмы отсечения отрезков и многоугольников</h1>
+            <p class="subtitle">Визуализация работы алгоритмов отсечения отрезков и многоугольников</p>
+            <div class="variant-info">Вариант 8: Алгоритм Лианга-Барски и отсечение отрезков выпуклым многоугольником</div>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="part1">Часть 1: Алгоритм Лианга-Барски</div>
+            <div class="tab" data-tab="part2">Часть 2: Отсечение отрезков выпуклым многоугольником</div>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="controls-panel">
+                <!-- Часть 1: Алгоритм Лианга-Барски -->
+                <div id="part1-content" class="tab-content active">
+                    <h2>Алгоритм Лианга-Барски</h2>
+                    
+                    <div class="algorithm-info">
+                        <p><strong>Алгоритм Лианга-Барски</strong> — это алгоритм отсечения отрезков прямоугольным окном. 
+                        Он использует параметрическое представление отрезков и проверяет точки пересечения 
+                        с границами отсекающего окна.</p>
+                    </div>
+                    
+                    <h3>Входные данные</h3>
+                    <div class="input-group">
+                        <label for="input-data">Введите данные или загрузите файл:</label>
+                        <textarea id="input-data" placeholder="Пример формата:
+5
+30 30 180 80
+50 100 150 150
+10 10 200 200
+80 40 120 160
+40 80 160 120
+50 50 150 150">5
+30 30 180 80
+50 100 150 150
+10 10 200 200
+80 40 120 160
+40 80 160 120
+50 50 150 150</textarea>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="file-input">Или загрузите файл с данными:</label>
+                        <input type="file" id="file-input" accept=".txt">
+                    </div>
+                    
+                    <div class="instructions">
+                        <h3>Формат файла:</h3>
+                        <ul>
+                            <li>Первая строка: количество отрезков (n)</li>
+                            <li>Следующие n строк: координаты отрезков (x1 y1 x2 y2)</li>
+                            <li>Последняя строка: координаты отсекающего окна (xmin ymin xmax ymax)</li>
+                        </ul>
+                        <div class="file-example">
+                            3<br>
+                            10 10 100 80<br>
+                            50 20 150 150<br>
+                            30 70 120 30<br>
+                            40 40 130 110
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="load-example" class="secondary-btn">Загрузить пример</button>
+                        <button id="clip-btn" class="primary-btn">Выполнить отсечение</button>
+                        <button id="clear-btn" class="secondary-btn">Очистить</button>
+                    </div>
+                </div>
+                
+                <!-- Часть 2: Отсечение отрезков выпуклым многоугольником -->
+                <div id="part2-content" class="tab-content">
+                    <h2>Отсечение отрезков выпуклым многоугольником</h2>
+                    
+                    <div class="algorithm-info">
+                        <p><strong>Алгоритм отсечения отрезков выпуклым многоугольником</strong> использует метод 
+                        циклического обхода граней многоугольника для определения видимых частей отрезков.</p>
+                    </div>
+                    
+                    <h3>Входные данные для части 2</h3>
+                    <div class="input-group">
+                        <label for="input-data2">Введите данные или загрузите файл:</label>
+                        <textarea id="input-data2" placeholder="Пример формата:
+4
+50 30 180 100
+80 120 150 180
+40 60 120 140
+100 40 160 90
+6
+80 50
+120 80
+140 120
+120 160
+80 140
+50 100">4
+50 30 180 100
+80 120 150 180
+40 60 120 140
+100 40 160 90
+6
+80 50
+120 80
+140 120
+120 160
+80 140
+50 100</textarea>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="file-input2">Или загрузите файл с данными:</label>
+                        <input type="file" id="file-input2" accept=".txt">
+                    </div>
+                    
+                    <div class="instructions">
+                        <h3>Формат файла для части 2:</h3>
+                        <ul>
+                            <li>Первая строка: количество отрезков (n)</li>
+                            <li>Следующие n строк: координаты отрезков (x1 y1 x2 y2)</li>
+                            <li>Следующая строка: количество вершин многоугольника (m)</li>
+                            <li>Следующие m строк: координаты вершин многоугольника (x y)</li>
+                        </ul>
+                        <div class="file-example">
+                            2<br>
+                            30 40 150 120<br>
+                            80 60 120 150<br>
+                            5<br>
+                            70 50<br>
+                            130 70<br>
+                            140 110<br>
+                            100 140<br>
+                            60 100
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="load-example2" class="secondary-btn">Загрузить пример</button>
+                        <button id="clip-btn2" class="primary-btn">Выполнить отсечение</button>
+                        <button id="clear-btn2" class="secondary-btn">Очистить</button>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color clipping-window"></div>
+                        <span>Отсекающее окно / многоугольник</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color original-lines"></div>
+                        <span>Исходные отрезки</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color clipped-lines"></div>
+                        <span>Видимые части отрезков</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <h2>Визуализация</h2>
+                <div style="position: relative;">
+                    <canvas id="canvas" width="800" height="600"></canvas>
+                    <div id="coordinates" style="position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.8); padding: 5px; border-radius: 4px; font-size: 12px;">
+                        Координаты: (0, 0)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Получаем элементы DOM
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const inputData = document.getElementById('input-data');
+        const fileInput = document.getElementById('file-input');
+        const clipBtn = document.getElementById('clip-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const loadExampleBtn = document.getElementById('load-example');
+        const inputData2 = document.getElementById('input-data2');
+        const fileInput2 = document.getElementById('file-input2');
+        const clipBtn2 = document.getElementById('clip-btn2');
+        const clearBtn2 = document.getElementById('clear-btn2');
+        const loadExampleBtn2 = document.getElementById('load-example2');
+        const coordinatesDiv = document.getElementById('coordinates');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Переменные для хранения данных
+        let lines = [];
+        let clippingWindow = { xmin: 0, ymin: 0, xmax: 0, ymax: 0 };
+        let clippedLines = [];
+        let polygonVertices = [];
+        let isPart1Active = true;
+        
+        // Настройки отображения
+        const colors = {
+            clippingWindow: '#3498db',
+            originalLines: '#e74c3c',
+            clippedLines: '#2ecc71',
+            polygon: '#9b59b6',
+            axes: '#7f8c8d',
+            grid: '#ecf0f1'
+        };
+        
+        // Инициализация канваса
+        function initCanvas() {
+            // Очищаем канвас
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем сетку
+            drawGrid();
+            
+            // Рисуем оси координат
+            drawAxes();
+            
+            // Если есть отсекающее окно, рисуем его
+            if (clippingWindow.xmin !== clippingWindow.xmax) {
+                drawClippingWindow();
+            }
+            
+            // Если есть многоугольник, рисуем его
+            if (polygonVertices.length > 0) {
+                drawPolygon();
+            }
+            
+            // Рисуем исходные отрезки
+            drawLines(lines, colors.originalLines);
+            
+            // Рисуем отсеченные отрезки
+            drawLines(clippedLines, colors.clippedLines, 3);
+            
+            // Добавляем координаты мыши
+            canvas.addEventListener('mousemove', handleMouseMove);
+        }
+        
+        // Рисуем сетку
+        function drawGrid() {
+            ctx.strokeStyle = colors.grid;
+            ctx.lineWidth = 0.5;
+            
+            // Вертикальные линии
+            for (let x = 0; x <= canvas.width; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Горизонтальные линии
+            for (let y = 0; y <= canvas.height; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // Рисуем оси координат
+        function drawAxes() {
+            ctx.strokeStyle = colors.axes;
+            ctx.lineWidth = 1.5;
+            
+            // Ось X
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Ось Y
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            
+            // Стрелки
+            // Стрелка оси X
+            ctx.beginPath();
+            ctx.moveTo(canvas.width - 10, canvas.height / 2 - 5);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.lineTo(canvas.width - 10, canvas.height / 2 + 5);
+            ctx.stroke();
+            
+            // Стрелка оси Y
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - 5, 10);
+            ctx.lineTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2 + 5, 10);
+            ctx.stroke();
+            
+            // Подписи осей
+            ctx.fillStyle = colors.axes;
+            ctx.font = '14px Arial';
+            ctx.fillText('X', canvas.width - 15, canvas.height / 2 - 10);
+            ctx.fillText('Y', canvas.width / 2 + 10, 15);
+            
+            // Подписи координат
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#7f8c8d';
+            
+            // Подписи по оси X
+            for (let x = -canvas.width/2; x <= canvas.width/2; x += 50) {
+                if (x === 0) continue;
+                const screenX = canvas.width/2 + x;
+                ctx.beginPath();
+                ctx.moveTo(screenX, canvas.height/2 - 5);
+                ctx.lineTo(screenX, canvas.height/2 + 5);
+                ctx.stroke();
+                ctx.fillText(x.toString(), screenX - 5, canvas.height/2 + 20);
+            }
+            
+            // Подписи по оси Y
+            for (let y = -canvas.height/2; y <= canvas.height/2; y += 50) {
+                if (y === 0) continue;
+                const screenY = canvas.height/2 - y;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width/2 - 5, screenY);
+                ctx.lineTo(canvas.width/2 + 5, screenY);
+                ctx.stroke();
+                ctx.fillText(y.toString(), canvas.width/2 + 10, screenY + 3);
+            }
+            
+            // Центр координат
+            ctx.fillText('0', canvas.width/2 + 5, canvas.height/2 + 15);
+        }
+        
+        // Рисуем отсекающее окно
+        function drawClippingWindow() {
+            const xmin = canvas.width/2 + clippingWindow.xmin;
+            const ymin = canvas.height/2 - clippingWindow.ymax; // Инвертируем Y для экранных координат
+            const width = clippingWindow.xmax - clippingWindow.xmin;
+            const height = clippingWindow.ymax - clippingWindow.ymin;
+            
+            ctx.strokeStyle = colors.clippingWindow;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(xmin, ymin, width, height);
+            ctx.setLineDash([]);
+            
+            // Заливка с прозрачностью
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+            ctx.fillRect(xmin, ymin, width, height);
+        }
+        
+        // Рисуем многоугольник
+        function drawPolygon() {
+            if (polygonVertices.length < 3) return;
+            
+            ctx.strokeStyle = colors.polygon;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
+            
+            ctx.beginPath();
+            const firstVertex = polygonVertices[0];
+            let x = canvas.width/2 + firstVertex.x;
+            let y = canvas.height/2 - firstVertex.y;
+            ctx.moveTo(x, y);
+            
+            for (let i = 1; i < polygonVertices.length; i++) {
+                x = canvas.width/2 + polygonVertices[i].x;
+                y = canvas.height/2 - polygonVertices[i].y;
+                ctx.lineTo(x, y);
+            }
+            
+            // Замыкаем многоугольник
+            x = canvas.width/2 + firstVertex.x;
+            y = canvas.height/2 - firstVertex.y;
+            ctx.lineTo(x, y);
+            
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Заливка с прозрачностью
+            ctx.fillStyle = 'rgba(155, 89, 182, 0.1)';
+            ctx.fill();
+            
+            // Рисуем вершины
+            ctx.fillStyle = colors.polygon;
+            for (let i = 0; i < polygonVertices.length; i++) {
+                x = canvas.width/2 + polygonVertices[i].x;
+                y = canvas.height/2 - polygonVertices[i].y;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Рисуем отрезки
+        function drawLines(linesArray, color, lineWidth = 2) {
+            if (linesArray.length === 0) return;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            
+            for (const line of linesArray) {
+                const x1 = canvas.width/2 + line.x1;
+                const y1 = canvas.height/2 - line.y1;
+                const x2 = canvas.width/2 + line.x2;
+                const y2 = canvas.height/2 - line.y2;
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                
+                // Рисуем концы отрезков
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x1, y1, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(x2, y2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Алгоритм Лианга-Барски для отсечения отрезка прямоугольным окном
+        function liangBarskyClip(line, clipWindow) {
+            let x1 = line.x1;
+            let y1 = line.y1;
+            let x2 = line.x2;
+            let y2 = line.y2;
+            
+            const p = [-(x2 - x1), x2 - x1, -(y2 - y1), y2 - y1];
+            const q = [x1 - clipWindow.xmin, clipWindow.xmax - x1, y1 - clipWindow.ymin, clipWindow.ymax - y1];
+            
+            let u1 = 0;
+            let u2 = 1;
+            
+            for (let i = 0; i < 4; i++) {
+                if (p[i] === 0) {
+                    // Линия параллельна границе
+                    if (q[i] < 0) {
+                        // Линия полностью вне окна
+                        return null;
+                    }
+                } else {
+                    const r = q[i] / p[i];
+                    if (p[i] < 0) {
+                        // Входная точка
+                        u1 = Math.max(u1, r);
+                    } else {
+                        // Выходная точка
+                        u2 = Math.min(u2, r);
+                    }
+                }
+            }
+            
+            if (u1 > u2) {
+                // Отрезок полностью невидим
+                return null;
+            }
+            
+            // Вычисляем конечные точки видимой части
+            const clippedX1 = x1 + u1 * (x2 - x1);
+            const clippedY1 = y1 + u1 * (y2 - y1);
+            const clippedX2 = x1 + u2 * (x2 - x1);
+            const clippedY2 = y1 + u2 * (y2 - y1);
+            
+            return {
+                x1: clippedX1,
+                y1: clippedY1,
+                x2: clippedX2,
+                y2: clippedY2
+            };
+        }
+        
+        // Алгоритм отсечения отрезков выпуклым многоугольником (алгоритм Сазерленда-Ходжмана для отрезков)
+        function clipLineWithPolygon(line, polygon) {
+            let tEnter = 0;
+            let tLeave = 1;
+            
+            const dx = line.x2 - line.x1;
+            const dy = line.y2 - line.y1;
+            
+            // Для каждого ребра многоугольника
+            for (let i = 0; i < polygon.length; i++) {
+                const p1 = polygon[i];
+                const p2 = polygon[(i + 1) % polygon.length];
+                
+                // Вектор нормали к ребру (направлен внутрь многоугольника)
+                const nx = p1.y - p2.y;
+                const ny = p2.x - p1.x;
+                
+                // Скалярное произведение
+                const f = (line.x1 - p1.x) * nx + (line.y1 - p1.y) * ny;
+                const d = dx * nx + dy * ny;
+                
+                if (d === 0) {
+                    // Линия параллельна ребру
+                    if (f < 0) {
+                        // Линия снаружи ребра - полностью невидима
+                        return null;
+                    }
+                } else {
+                    const t = -f / d;
+                    
+                    if (d > 0) {
+                        // Линия входит в многоугольник
+                        if (t > tEnter) tEnter = t;
+                    } else {
+                        // Линия выходит из многоугольника
+                        if (t < tLeave) tLeave = t;
+                    }
+                }
+            }
+            
+            if (tEnter > tLeave) {
+                // Отрезок полностью невидим
+                return null;
+            }
+            
+            // Вычисляем конечные точки видимой части
+            const clippedX1 = line.x1 + tEnter * dx;
+            const clippedY1 = line.y1 + tEnter * dy;
+            const clippedX2 = line.x1 + tLeave * dx;
+            const clippedY2 = line.y1 + tLeave * dy;
+            
+            return {
+                x1: clippedX1,
+                y1: clippedY1,
+                x2: clippedX2,
+                y2: clippedY2
+            };
+        }
+        
+        // Обработка ввода данных для части 1
+        function processInputData() {
+            const data = inputData.value.trim().split('\n');
+            
+            if (data.length < 2) {
+                alert('Неверный формат данных');
+                return;
+            }
+            
+            // Сбрасываем данные
+            lines = [];
+            clippedLines = [];
+            polygonVertices = [];
+            
+            // Читаем количество отрезков
+            const n = parseInt(data[0]);
+            
+            if (isNaN(n) || n <= 0) {
+                alert('Неверное количество отрезков');
+                return;
+            }
+            
+            // Читаем отрезки
+            for (let i = 1; i <= n && i < data.length; i++) {
+                const coords = data[i].trim().split(/\s+/).map(Number);
+                if (coords.length >= 4) {
+                    lines.push({
+                        x1: coords[0],
+                        y1: coords[1],
+                        x2: coords[2],
+                        y2: coords[3]
+                    });
+                }
+            }
+            
+            // Читаем отсекающее окно (последняя строка)
+            const lastLine = data[data.length - 1].trim().split(/\s+/).map(Number);
+            if (lastLine.length >= 4) {
+                clippingWindow = {
+                    xmin: lastLine[0],
+                    ymin: lastLine[1],
+                    xmax: lastLine[2],
+                    ymax: lastLine[3]
+                };
+            } else {
+                alert('Неверные координаты отсекающего окна');
+                return;
+            }
+            
+            // Выполняем отсечение
+            performClipping();
+            
+            // Перерисовываем канвас
+            initCanvas();
+        }
+        
+        // Обработка ввода данных для части 2
+        function processInputData2() {
+            const data = inputData2.value.trim().split('\n');
+            
+            if (data.length < 3) {
+                alert('Неверный формат данных');
+                return;
+            }
+            
+            // Сбрасываем данные
+            lines = [];
+            clippedLines = [];
+            clippingWindow = { xmin: 0, ymin: 0, xmax: 0, ymax: 0 };
+            
+            // Читаем количество отрезков
+            const n = parseInt(data[0]);
+            
+            if (isNaN(n) || n <= 0) {
+                alert('Неверное количество отрезков');
+                return;
+            }
+            
+            // Читаем отрезки
+            for (let i = 1; i <= n && i < data.length; i++) {
+                const coords = data[i].trim().split(/\s+/).map(Number);
+                if (coords.length >= 4) {
+                    lines.push({
+                        x1: coords[0],
+                        y1: coords[1],
+                        x2: coords[2],
+                        y2: coords[3]
+                    });
+                }
+            }
+            
+            // Читаем количество вершин многоугольника
+            const mIndex = n + 1;
+            if (mIndex >= data.length) {
+                alert('Неверный формат данных');
+                return;
+            }
+            
+            const m = parseInt(data[mIndex]);
+            
+            if (isNaN(m) || m < 3) {
+                alert('Неверное количество вершин многоугольника (должно быть >= 3)');
+                return;
+            }
+            
+            // Читаем вершины многоугольника
+            polygonVertices = [];
+            for (let i = mIndex + 1; i < mIndex + 1 + m && i < data.length; i++) {
+                const coords = data[i].trim().split(/\s+/).map(Number);
+                if (coords.length >= 2) {
+                    polygonVertices.push({
+                        x: coords[0],
+                        y: coords[1]
+                    });
+                }
+            }
+            
+            if (polygonVertices.length < 3) {
+                alert('Недостаточно вершин многоугольника');
+                return;
+            }
+            
+            // Выполняем отсечение
+            performClipping2();
+            
+            // Перерисовываем канвас
+            initCanvas();
+        }
+        
+        // Выполнить отсечение для части 1
+        function performClipping() {
+            clippedLines = [];
+            
+            for (const line of lines) {
+                const clippedLine = liangBarskyClip(line, clippingWindow);
+                if (clippedLine) {
+                    clippedLines.push(clippedLine);
+                }
+            }
+        }
+        
+        // Выполнить отсечение для части 2
+        function performClipping2() {
+            clippedLines = [];
+            
+            for (const line of lines) {
+                const clippedLine = clipLineWithPolygon(line, polygonVertices);
+                if (clippedLine) {
+                    clippedLines.push(clippedLine);
+                }
+            }
+        }
+        
+        // Обработчик загрузки файла для части 1
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                inputData.value = event.target.result;
+                processInputData();
+            };
+            reader.readAsText(file);
+        });
+        
+        // Обработчик загрузки файла для части 2
+        fileInput2.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                inputData2.value = event.target.result;
+                processInputData2();
+            };
+            reader.readAsText(file);
+        });
+        
+        // Обработчики кнопок для части 1
+        clipBtn.addEventListener('click', processInputData);
+        
+        clearBtn.addEventListener('click', function() {
+            inputData.value = '';
+            lines = [];
+            clippedLines = [];
+            clippingWindow = { xmin: 0, ymin: 0, xmax: 0, ymax: 0 };
+            polygonVertices = [];
+            initCanvas();
+        });
+        
+        loadExampleBtn.addEventListener('click', function() {
+            inputData.value = `5
+30 30 180 80
+50 100 150 150
+10 10 200 200
+80 40 120 160
+40 80 160 120
+50 50 150 150`;
+            processInputData();
+        });
+        
+        // Обработчики кнопок для части 2
+        clipBtn2.addEventListener('click', processInputData2);
+        
+        clearBtn2.addEventListener('click', function() {
+            inputData2.value = '';
+            lines = [];
+            clippedLines = [];
+            clippingWindow = { xmin: 0, ymin: 0, xmax: 0, ymax: 0 };
+            polygonVertices = [];
+            initCanvas();
+        });
+        
+        loadExampleBtn2.addEventListener('click', function() {
+            inputData2.value = `4
+50 30 180 100
+80 120 150 180
+40 60 120 140
+100 40 160 90
+6
+80 50
+120 80
+140 120
+120 160
+80 140
+50 100`;
+            processInputData2();
+        });
+        
+        // Обработчики вкладок
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // Обновляем активную вкладку
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Показываем соответствующий контент
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${tabId}-content`) {
+                        content.classList.add('active');
+                    }
+                });
+                
+                isPart1Active = tabId === 'part1';
+                
+                // Очищаем и перерисовываем канвас
+                if (isPart1Active) {
+                    // Для части 1 очищаем многоугольник
+                    polygonVertices = [];
+                } else {
+                    // Для части 2 очищаем отсекающее окно
+                    clippingWindow = { xmin: 0, ymin: 0, xmax: 0, ymax: 0 };
+                }
+                
+                initCanvas();
+            });
+        });
+        
+        // Отображение координат мыши
+        function handleMouseMove(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Преобразуем экранные координаты в мировые
+            const worldX = Math.round(x - canvas.width/2);
+            const worldY = Math.round(canvas.height/2 - y);
+            
+            coordinatesDiv.textContent = `Координаты: (${worldX}, ${worldY})`;
+        }
+        
+        // Инициализация при загрузке страницы
+        window.addEventListener('load', function() {
+            // Загружаем пример для части 1
+            inputData.value = `5
+30 30 180 80
+50 100 150 150
+10 10 200 200
+80 40 120 160
+40 80 160 120
+50 50 150 150`;
+            processInputData();
+            
+            // Инициализируем канвас
+            initCanvas();
+        });
+    </script>
+</body>
+</html>
